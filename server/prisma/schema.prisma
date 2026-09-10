@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Estados posibles de Pedido: "nuevo" | "respondido" | "agendado" | "descartado"
+// Motivos de descarte: "no_era_para_mi" | "quedo_caro" | "no_contesto" | "lo_hizo_otro"
+// SQLite no soporta enums en Prisma; se validan como string en la capa de API.
+
+model Cliente {
+  id        String   @id @default(cuid())
+  nombre    String
+  telefono  String?  @unique
+  createdAt DateTime @default(now())
+
+  domicilios Domicilio[]
+  pedidos    Pedido[]
+  visitas    Visita[]
+}
+
+model Domicilio {
+  id        String   @id @default(cuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  direccion String
+  createdAt DateTime @default(now())
+
+  pedidos Pedido[]
+  visitas Visita[]
+}
+
+model Pedido {
+  id                String   @id @default(cuid())
+  textoOriginal     String?
+  telefonoDetectado String?
+  motivo            String?
+
+  clienteId   String?
+  cliente     Cliente?   @relation(fields: [clienteId], references: [id])
+  domicilioId String?
+  domicilio   Domicilio? @relation(fields: [domicilioId], references: [id])
+
+  estado         String    @default("nuevo")
+  estadoAnterior String?
+  motivoDescarte String?
+  descartadoEn   DateTime?
+  respondidoEn   DateTime?
+  agendadoEn     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visita Visita?
+}
+
+model Visita {
+  id          String    @id @default(cuid())
+  clienteId   String
+  cliente     Cliente   @relation(fields: [clienteId], references: [id])
+  domicilioId String
+  domicilio   Domicilio @relation(fields: [domicilioId], references: [id])
+  motivo      String
+  fecha       DateTime
+
+  pedidoOrigenId String? @unique
+  pedidoOrigen   Pedido? @relation(fields: [pedidoOrigenId], references: [id])
+
+  createdAt DateTime @default(now())
+}
